@@ -106,6 +106,7 @@
                            :field="item"
                            :fields-width="fieldsWidth"
                            min-width="120px"
+                           :showOverflowTooltip="false"
                            :label="$t('api_test.automation.tag')">
             <template v-slot:default="scope">
               <ms-tag v-for="(itemName,index)  in scope.row.tags" :key="index" type="success" effect="plain"
@@ -968,15 +969,7 @@ export default {
   height: 100% !important;
 }
 
-/*/deep/ .el-table__fixed {*/
-/*  height: 110px !important;*/
-/*}*/
-
 /deep/ .el-card__header {
   padding: 10px;
-}
-
-/deep/ .el-table__fixed-body-wrapper {
-  top: 48px !important;
 }
 </style>
