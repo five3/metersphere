@@ -56,7 +56,7 @@ public class MsLoopController extends MsTestElement {
         }
         final HashTree groupTree = controller(tree);
         if (CollectionUtils.isNotEmpty(config.getVariables())) {
-            this.addCsvDataSet(groupTree, config.getVariables(), config);
+            this.addCsvDataSet(groupTree, config.getVariables(), config, "shareMode.thread");
             this.addCounter(groupTree, config.getVariables());
             this.addRandom(groupTree, config.getVariables());
         }
@@ -66,6 +66,8 @@ public class MsLoopController extends MsTestElement {
         // 不打开执行成功后轮询功能，则成功后就停止循环
         if (StringUtils.equals(this.loopType, LoopConstants.LOOP_COUNT.name()) && this.countController != null && !countController.isProceed()) {
             ResultAction resultAction = new ResultAction();
+            resultAction.setProperty(TestElement.TEST_CLASS, ResultAction.class.getName());
+            resultAction.setProperty(TestElement.GUI_CLASS, SaveService.aliasToClass("ResultActionGui"));
             resultAction.setName("ResultAction");
             resultAction.setProperty("OnError.action", "1000");
             groupTree.add(resultAction);
@@ -104,7 +106,9 @@ public class MsLoopController extends MsTestElement {
         loopController.setProperty(TestElement.TEST_CLASS, LoopController.class.getName());
         loopController.setProperty(TestElement.GUI_CLASS, SaveService.aliasToClass("LoopControlPanel"));
         loopController.setLoops(countController.getLoops());
-        loopController.setContinueForever(false);
+        if (countController.getLoops() > 0) {
+            loopController.setContinueForever(true);
+        }
         return loopController;
     }
 

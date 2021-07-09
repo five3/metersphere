@@ -1,12 +1,10 @@
 package io.metersphere.api.dto.scenario;
 
 import com.alibaba.fastjson.JSONObject;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.metersphere.api.dto.scenario.request.BodyFile;
 import io.metersphere.commons.json.JSONSchemaGenerator;
 import io.metersphere.commons.utils.FileUtils;
-import io.metersphere.commons.utils.ScriptEngineUtils;
+import io.metersphere.jmeter.utils.ScriptEngineUtils;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -25,6 +23,7 @@ public class Body {
     private List<KeyValue> kvs;
     private List<KeyValue> binary;
     private Object jsonSchema;
+    private String tmpFilePath;
 
     public final static String KV = "KeyValue";
     public final static String FORM_DATA = "Form Data";
@@ -70,17 +69,7 @@ public class Body {
                 sampler.setDoMultipart(true);
             }
         } else {
-            if (StringUtils.isNotEmpty(this.format) && this.getJsonSchema() != null) {
-                if("JSON-SCHEMA".equals(this.format)) {
-                    this.raw = JSONSchemaGenerator.getJson(com.alibaba.fastjson.JSON.toJSONString(this.getJsonSchema()));
-                } else {    //  json 文本也支持 mock 参数
-                    JSONObject jsonObject = com.alibaba.fastjson.JSON.parseObject(this.getRaw());
-                    jsonMockParse(jsonObject);
-                    // 格式化 json
-                    Gson gson = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
-                    this.raw = gson.toJson(jsonObject);
-                }
-            }
+            parseJonBodyMock();
             KeyValue keyValue = new KeyValue("", "JSON-SCHEMA", this.getRaw(), true, true);
             sampler.setPostBodyRaw(true);
             keyValue.setEnable(true);
@@ -90,13 +79,30 @@ public class Body {
         return body;
     }
 
+    private void parseJonBodyMock() {
+        if (StringUtils.isNotBlank(this.type) && StringUtils.equals(this.type, "JSON")) {
+            if(StringUtils.isNotEmpty(this.format) && this.getJsonSchema() != null
+                    && "JSON-SCHEMA".equals(this.format)) {
+                this.raw = JSONSchemaGenerator.getJson(com.alibaba.fastjson.JSON.toJSONString(this.getJsonSchema()));
+            } else {    //  json 文本也支持 mock 参数
+                try {
+                    JSONObject jsonObject = com.alibaba.fastjson.JSON.parseObject(this.getRaw());
+                    jsonMockParse(jsonObject);
+                    this.raw = JSONObject.toJSONString(jsonObject);
+                } catch (Exception e) {}
+            }
+        }
+    }
+
     private void jsonMockParse(JSONObject jsonObject) {
         for(String key : jsonObject.keySet()) {
             Object value = jsonObject.get(key);
             if(value instanceof JSONObject) {
                 jsonMockParse((JSONObject) value);
             } else if(value instanceof String) {
-                value = ScriptEngineUtils.calculate((String) value);
+                if (StringUtils.isNotBlank((String) value)) {
+                    value = ScriptEngineUtils.buildFunctionCallString((String) value);
+                }
                 jsonObject.put(key, value);
             }
         }
@@ -121,7 +127,15 @@ public class Body {
         if (files != null) {
             files.forEach(file -> {
                 String paramName = keyValue.getName() == null ? requestId : keyValue.getName();
-                String path = FileUtils.BODY_FILE_DIR + '/' + file.getId() + '_' + file.getName();
+                String path = null;
+                if (StringUtils.isNotBlank(file.getId())) {
+                    // 旧数据
+                    path = FileUtils.BODY_FILE_DIR + '/' + file.getId() + '_' + file.getName();
+                } else if (StringUtils.isNotBlank(this.tmpFilePath)) {
+                    path = FileUtils.BODY_FILE_DIR + '/' + this.tmpFilePath + '/' + file.getName();
+                } else {
+                    path = FileUtils.BODY_FILE_DIR + '/' + requestId + '/' + file.getName();
+                }
                 String mimetype = keyValue.getContentType();
                 list.add(new HTTPFileArg(path, paramName, mimetype));
             });
@@ -155,5 +169,4 @@ public class Body {
         this.binary = new ArrayList<>();
         this.binary.add(new KeyValue());
     }
-
 }

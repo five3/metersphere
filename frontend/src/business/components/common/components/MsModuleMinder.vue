@@ -11,7 +11,10 @@
       :tag-edit-check="tagEditCheck"
       :priority-disable-check="priorityDisableCheck"
       :distinct-tags="distinctTags"
+      :default-mold="defaultMode"
       @afterMount="$emit('afterMount')"
+      @moldChange="handleMoldChange"
+      :disabled="disabled"
       @save="save"
     />
   </div>
@@ -20,21 +23,15 @@
 <script>
 
 import MsFullScreenButton from "@/business/components/common/components/MsFullScreenButton";
-import {listenNodeSelected} from "@/business/components/track/common/minder/minderUtils";
 export default {
   name: "MsModuleMinder",
   components: {MsFullScreenButton},
   props: {
+    minderKey: String,
     treeNodes: {
       type: Array,
       default() {
         return []
-      }
-    },
-    dataMap: {
-      type: Map,
-      default() {
-        return new Map();
       }
     },
     tags: {
@@ -60,7 +57,9 @@ export default {
     },
     tagDisableCheck: Function,
     tagEditCheck: Function,
-    priorityDisableCheck: Function
+    priorityDisableCheck: Function,
+    disabled: Boolean,
+    ignoreNum: Boolean
   },
   data() {
     return {
@@ -80,48 +79,57 @@ export default {
       },
       isActive: true,
       isFullScreen: false,
-      height: ''
+      height: '',
+      defaultMode: 3
     }
   },
   created() {
-    this.height = document.body.clientHeight - 340;
+    this.height = document.body.clientHeight - 285;
   },
-  watch: {
-    dataMap() {
-      this.$nextTick(() => {
-        if (this.selectNode && this.selectNode.data) {
-          this.handleNodeSelect(this.selectNode);
-        } else {
-          this.parse(this.importJson.root, this.treeNodes);
-        }
-        this.reload();
-      })
+  mounted() {
+    this.defaultMode = 3;
+    if (this.minderKey) {
+      let model = localStorage.getItem(this.minderKey + 'minderModel');
+      if (model) {
+        this.defaultMode = Number.parseInt(model);
+      }
     }
+    this.$nextTick(() => {
+      if (this.selectNode && this.selectNode.data) {
+        this.handleNodeSelect(this.selectNode);
+      } else {
+        this.parse(this.importJson.root, this.treeNodes);
+      }
+      this.reload();
+    });
   },
   methods: {
+    handleMoldChange(index) {
+      if (this.minderKey) {
+        localStorage.setItem(this.minderKey + 'minderModel', index);
+      }
+      this.defaultMode = index;
+    },
     save(data) {
       this.$emit('save', data)
     },
     parse(root, children) {
       root.children = [];
-      if (root.data.id ===  'root') {
-        // nodeId 为空的用例
-        let rootChildData = this.dataMap.get("");
-        if (rootChildData) {
-          rootChildData.forEach((dataNode) => {
-            root.children.push(dataNode);
-          })
-        }
+      if (!children) {
+        children = [];
       }
-      // 添加数据节点
-      let dataNodes = this.dataMap.get(root.data.id);
-      if (dataNodes) {
-        dataNodes.forEach((dataNode) => {
-          root.children.push(dataNode);
-        })
+      let caseNum = root.data.caseNum;
+      if (children.length < 1 && (this.ignoreNum || caseNum && caseNum > 0)) {
+        root.children.push({
+          data: {
+            text: '',
+            type: 'tmp',
+            expandState:"collapse"
+          },
+        });
       }
 
-      if (children == null || children.length < 1) {
+      if (children.length < 1) {
         return;
       }
 
@@ -132,6 +140,7 @@ export default {
             id: item.id,
             disable: true,
             type: 'node',
+            caseNum: item.caseNum,
             path: root.data.path + "/" + item.name,
             expandState:"collapse"
           },
@@ -147,10 +156,7 @@ export default {
       this.isActive = false;
       this.$nextTick(() => {
         this.isActive = true;
-      })
-      this.$nextTick(() => {
-        listenNodeSelected();
-      })
+      });
     },
     setJsonImport(data) {
       this.importJson = data;
@@ -218,5 +224,9 @@ export default {
 
 .full-screen .fulls-screen-btn {
   right: 30px;
+}
+
+/deep/ *[disabled] {
+  opacity: 0.7 !important;
 }
 </style>

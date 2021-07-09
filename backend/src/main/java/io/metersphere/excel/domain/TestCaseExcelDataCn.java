@@ -13,12 +13,12 @@ import javax.validation.constraints.Pattern;
 @ColumnWidth(15)
 public class TestCaseExcelDataCn extends TestCaseExcelData {
 
-    @ExcelProperty("ID")
-    @NotRequired
-    private Integer num;
+//    @ExcelProperty("ID")
+//    @NotRequired
+//    private Integer num;
 
     @ColumnWidth(50)
-    @ExcelProperty("自定义ID")
+    @ExcelProperty("ID")
     @NotRequired
     private String customNum;
 
@@ -35,12 +35,7 @@ public class TestCaseExcelDataCn extends TestCaseExcelData {
     private String nodePath;
 
     @NotBlank(message = "{cannot_be_null}")
-    @ExcelProperty("用例类型")
-    @Pattern(regexp = "(^functional$)|(^performance$)|(^api$)", message = "{test_case_type_validate}")
-    private String type;
-
-    @NotBlank(message = "{cannot_be_null}")
-    @ExcelProperty("维护人")
+    @ExcelProperty(value = "责任人")
     private String maintainer;
 
     @NotBlank(message = "{cannot_be_null}")
@@ -74,6 +69,11 @@ public class TestCaseExcelDataCn extends TestCaseExcelData {
     @ColumnWidth(50)
     @ExcelProperty("预期结果")
     private String stepResult;
+
+    @ColumnWidth(50)
+    @ExcelProperty("用例状态")
+    private String status;
+
 
     @ColumnWidth(50)
     @ExcelProperty("编辑模式")

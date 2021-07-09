@@ -1,46 +1,52 @@
 <template>
-  <el-form :model="condition" :rules="rules" ref="httpConfig" class="ms-el-form-item__content">
-    <el-form-item prop="socket">
-      <span class="ms-env-span">{{$t('api_test.environment.socket')}}</span>
-      <el-input v-model="condition.socket" style="width: 80%" :placeholder="$t('api_test.request.url_description')" clearable size="small" :disabled="httpConfig.isMock">
-        <template slot="prepend">
-          <el-select v-model="condition.protocol" class="request-protocol-select" size="small">
-            <el-option label="http://" value="http"/>
-            <el-option label="https://" value="https"/>
-          </el-select>
-        </template>
-      </el-input>
-    </el-form-item>
-    <el-form-item prop="enable">
-      <span class="ms-env-span">{{$t('api_test.environment.condition_enable')}}</span>
-      <el-radio-group v-model="condition.type" @change="typeChange" :disabled="condition.id!==undefined && condition.id!==''">
-        <el-radio label="NONE">{{ $t('api_test.definition.document.data_set.none') }}</el-radio>
-        <el-radio label="MODULE">{{$t('test_track.module.module')}}</el-radio>
-        <el-radio label="PATH">{{$t('api_test.definition.api_path')}}</el-radio>
-      </el-radio-group>
-      <el-button type="primary" v-if="!condition.id" style="float: right" size="mini" @click="add">{{$t('commons.add')}}</el-button>
-      <el-button type="primary" v-else style="float: right" size="mini" @click="update">{{$t('commons.update')}}</el-button>
 
-      <div v-if="condition.type === 'MODULE'">
-        <ms-select-tree size="small" :data="moduleOptions" :default-key="condition.ids" @getValue="setModule" :obj="moduleObj" clearable checkStrictly multiple v-if="!loading"/>
-      </div>
-      <div v-if="condition.type === 'PATH'">
-        <el-input v-model="pathDetails.name" :placeholder="$t('api_test.value')" clearable size="small">
-          <template v-slot:prepend>
-            <el-select v-model="pathDetails.value" class="request-protocol-select" size="small">
-              <el-option :label="$t('api_test.request.assertions.contains')" value="contains"/>
-              <el-option :label="$t('commons.adv_search.operators.equals')" value="equals"/>
+  <el-form :model="condition" :rules="rules" ref="httpConfig" class="ms-el-form-item__content" :disabled="isReadOnly">
+    <div class="ms-border">
+      <el-form-item prop="socket">
+        <span class="ms-env-span">{{$t('api_test.environment.socket')}}</span>
+        <el-input v-model="condition.socket" style="width: 80%" :placeholder="$t('api_test.request.url_description')" clearable size="small">
+          <template slot="prepend">
+            <el-select v-model="condition.protocol" class="request-protocol-select" size="small">
+              <el-option label="http://" value="http"/>
+              <el-option label="https://" value="https"/>
             </el-select>
           </template>
         </el-input>
-      </div>
+      </el-form-item>
+      <el-form-item prop="enable">
+        <span class="ms-env-span">{{$t('api_test.environment.condition_enable')}}</span>
+        <el-radio-group v-model="condition.type" @change="typeChange">
+          <el-radio label="NONE">{{ $t('api_test.definition.document.data_set.none') }}</el-radio>
+          <el-radio label="MODULE">{{$t('test_track.module.module')}}</el-radio>
+          <el-radio label="PATH">{{$t('api_test.definition.api_path')}}</el-radio>
+        </el-radio-group>
+        <div v-if="condition.type === 'MODULE'" style="margin-top: 6px">
+          <ms-select-tree size="small" :data="moduleOptions" :default-key="condition.ids" @getValue="setModule" :obj="moduleObj" clearable checkStrictly multiple v-if="!loading"/>
+        </div>
+        <div v-if="condition.type === 'PATH'" style="margin-top: 6px">
+          <el-input v-model="pathDetails.name" :placeholder="$t('api_test.value')" clearable size="small">
+            <template v-slot:prepend>
+              <el-select v-model="pathDetails.value" class="request-protocol-select" size="small">
+                <el-option :label="$t('api_test.request.assertions.contains')" value="contains"/>
+                <el-option :label="$t('commons.adv_search.operators.equals')" value="equals"/>
+              </el-select>
+            </template>
+          </el-input>
+        </div>
 
-      <p>{{$t('api_test.request.headers')}}</p>
-      <ms-api-key-value :items="condition.headers" :isShowEnable="true" :suggestions="headerSuggestions"/>
-
-    </el-form-item>
+        <p>{{$t('api_test.request.headers')}}</p>
+        <ms-api-key-value :items="condition.headers" :isShowEnable="true" :suggestions="headerSuggestions"/>
+        <div style="margin-top: 20px">
+          <el-button v-if="!condition.id" type="primary" style="float: right" size="mini" @click="add">{{$t('commons.add')}}</el-button>
+          <div v-else>
+            <el-button type="primary" style="float: right;margin-left: 10px" size="mini" @click="clear">{{$t('commons.clear')}}</el-button>
+            <el-button type="primary" style="float: right" size="mini" @click="update">{{$t('commons.update')}}</el-button>
+          </div>
+        </div>
+      </el-form-item>
+    </div>
     <div class="ms-border">
-      <el-table :data="httpConfig.conditions" highlight-current-row @current-change="selectRow" v-if="!loading">
+      <el-table :data="httpConfig.conditions" highlight-current-row @current-change="selectRow">
         <el-table-column prop="socket" :label="$t('load_test.domain')" show-overflow-tooltip width="180">
           <template v-slot:default="{row}">
             {{getUrl(row)}}
@@ -63,10 +69,12 @@
         </el-table-column>
         <el-table-column :label="$t('commons.operating')" width="100px">
           <template v-slot:default="{row}">
-            <ms-table-operator-button :disabled="httpConfig.isMock" :tip="$t('api_test.automation.copy')"
-                                      icon="el-icon-document-copy" @exec="copy(row)"/>
-            <ms-table-operator-button :disabled="httpConfig.isMock" :tip="$t('api_test.automation.remove')"
-                                      icon="el-icon-delete" @exec="remove(row)" type="danger" v-tester/>
+            <div>
+              <ms-table-operator-button :tip="$t('api_test.automation.copy')"
+                                        icon="el-icon-document-copy" @exec="copy(row)"/>
+              <ms-table-operator-button :tip="$t('api_test.automation.remove')"
+                                        icon="el-icon-delete" @exec="remove(row)" type="danger"/>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -90,6 +98,10 @@
     props: {
       httpConfig: new HttpConfig(),
       projectId: String,
+      isReadOnly: {
+        type: Boolean,
+        default: false
+      },
     },
     created() {
       this.list();
@@ -117,6 +129,7 @@
         loading: false,
         pathDetails: new KeyValue({name: "", value: "contains"}),
         condition: {type: "NONE", details: [new KeyValue({name: "", value: "contains"})], protocol: "http", socket: "", domain: "", port: 0, headers: [new KeyValue()]},
+        beforeCondition: {}
       };
     },
     watch: {
@@ -177,7 +190,7 @@
         }
       },
       selectRow(row) {
-        this.condition = {};
+        this.condition = {type: "NONE", details: [new KeyValue({name: "", value: "contains"})], protocol: "http", socket: "", domain: "", port: 0, headers: [new KeyValue()]};
         if (row) {
           this.httpConfig.socket = row.socket;
           this.httpConfig.protocol = row.protocol;
@@ -195,9 +208,15 @@
             });
           }
         }
+        this.beforeCondition = JSON.parse(JSON.stringify(this.condition));
         this.reload();
       },
       typeChange() {
+        if (this.condition.type === "NONE" && this.condition.id  &&  this.checkNode(this.condition.id)) {
+          this.condition.type = this.beforeCondition.type;
+          this.$warning("启用条件为 '无' 的域名已经存在！");
+          return;
+        }
         switch (this.condition.type) {
           case "NONE":
             this.condition.details = [];
@@ -228,6 +247,9 @@
           data.forEach((item) => {
             this.condition.details.push(new KeyValue({name: item.name, value: item.id}));
           });
+        } else {
+          this.condition.ids = [];
+          this.condition.details = [];
         }
       },
       update() {
@@ -246,17 +268,22 @@
           this.reload();
         }
       },
+      clear() {
+        this.condition = {type: "NONE", details: [new KeyValue({name: "", value: "contains"})], protocol: "http", socket: "", domain: "", headers: [new KeyValue()]};
+      },
       reload() {
         this.loading = true
         this.$nextTick(() => {
           this.loading = false
         });
       },
-      checkNode() {
+      checkNode(id) {
         let index = 1;
         this.httpConfig.conditions.forEach(item => {
           if (item.type === "NONE") {
-            index++;
+            if(!id || id !== item.id) {
+              index++;
+            }
           }
         })
         return index > 1;

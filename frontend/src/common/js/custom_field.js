@@ -1,6 +1,11 @@
 import i18n from '../../i18n/i18n'
 import {SYSTEM_FIELD_NAME_MAP} from "@/common/js/table-constants";
 
+function setDefaultValue(item, value) {
+  item.defaultValue = value;
+  item.hasParse = true; // 多次调用不执行这部分
+}
+
 /**
  * 设置默认值，添加自定义校验
  * @param data 原表单值
@@ -24,8 +29,7 @@ export function parseCustomField(data, template, customFieldForm, rules, oldFiel
   template.customFields.forEach(item => {
 
     if (item.defaultValue && !item.hasParse) {
-      item.defaultValue = JSON.parse(item.defaultValue);
-      item.hasParse = true; // 多次调用不执行这部分
+      setDefaultValue(item, JSON.parse(item.defaultValue));
     }
 
     // 添加自定义字段必填校验
@@ -43,7 +47,7 @@ export function parseCustomField(data, template, customFieldForm, rules, oldFiel
       for (const key of oldFields.keys()) {
         if (item.name === key) {
           if (oldFields.get(key)) {
-            item.defaultValue = oldFields.get(key);
+            setDefaultValue(item, oldFields.get(key));
           }
         }
       }
@@ -53,8 +57,8 @@ export function parseCustomField(data, template, customFieldForm, rules, oldFiel
     if (data.customFields instanceof Array) {
       for (let i = 0; i < data.customFields.length; i++) {
         let customField = data.customFields[i];
-        if (customField.id === item.id) {
-          item.defaultValue = customField.value;
+        if (customField.name === item.name) {
+          setDefaultValue(item, customField.value);
           break;
         }
       }
@@ -63,7 +67,7 @@ export function parseCustomField(data, template, customFieldForm, rules, oldFiel
       for (const key in data.customFields) {
         if (item.name === key) {
           if (data.customFields[key]) {
-            item.defaultValue = JSON.parse(data.customFields[key]);
+            setDefaultValue(item, JSON.parse(data.customFields[key]));
           }
         }
       }
@@ -82,10 +86,23 @@ export function buildCustomFields(data, param, template) {
       data.customFields = [];
     }
     let customFields = data.customFields;
+
+    // 去重操作
+    if (customFields) {
+      let nameSet = new Set();
+      for(let i = customFields.length - 1; i >= 0; i--){
+        let name = customFields[i].name;
+        if(nameSet.has(name)){
+          customFields.splice(i,1);
+        }
+        nameSet.add(name);
+      }
+    }
+
     template.customFields.forEach(item => {
       let hasField = false;
       for (const index in customFields) {
-        if (customFields[index].id === item.id) {
+        if (customFields[index].name === item.name) {
           hasField = true;
           customFields[index].name = item.name;
           customFields[index].value = item.defaultValue;
@@ -96,7 +113,9 @@ export function buildCustomFields(data, param, template) {
         let customField = {
           id: item.id,
           name: item.name,
-          value: item.defaultValue
+          value: item.defaultValue,
+          type: item.type,
+          customData: item.customData,
         };
         customFields.push(customField);
       }

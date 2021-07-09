@@ -21,20 +21,23 @@
         <ms-table-header-select-popover v-show="total>0"
                                         :page-size="pageSize > total ? total : pageSize"
                                         :total="total"
+                                        :table-data-count-in-page="tableData.length"
                                         @selectPageAll="isSelectDataAll(false)"
                                         @selectAll="isSelectDataAll(true)"/>
         <el-table-column min-width="40" :resizable="false" align="center">
           <template v-slot:default="scope">
-            <show-more-btn :is-show="scope.row.showMore && !isReadOnly" :buttons="buttons" :size="selectDataCounts"/>
+            <show-more-btn :is-show-tool="scope.row.showTool" :is-show="scope.row.showMore && !isReadOnly"
+                           :buttons="buttons" :size="selectDataCounts"/>
           </template>
         </el-table-column>
         <template v-for="(item, index) in tableLabel">
-          <el-table-column v-if="item.id == 'num'" prop="num" min-width="80" label="ID" show-overflow-tooltip :key="index"/>
+          <el-table-column v-if="item.id == 'num'" prop="num" sortable min-width="80" label="ID" show-overflow-tooltip :key="index"/>
           <el-table-column
               v-if="item.id == 'caseName'"
               prop="caseName"
               :label="$t('commons.name')"
               min-width="120"
+              sortable
               show-overflow-tooltip
               :key="index">
           </el-table-column>
@@ -117,11 +120,17 @@
             <header-label-operate @exec="customHeader"/>
           </template>
           <template v-slot:default="scope">
-            <ms-table-operator-button class="run-button" :is-tester-permission="true" :tip="$t('api_test.run')"
-                                      icon="el-icon-video-play"
-                                      @exec="run(scope.row)" v-tester/>
-            <ms-table-operator-button :is-tester-permission="true" :tip="$t('test_track.plan_view.cancel_relevance')"
-                                      icon="el-icon-unlock" type="danger" @exec="handleDelete(scope.row)" v-tester/>
+            <div>
+
+              <ms-table-operator-button class="run-button"
+                                        v-permission="['PROJECT_TRACK_PLAN:READ+RUN']"
+                                        :tip="$t('api_test.run')"
+                                        icon="el-icon-video-play"
+                                        @exec="run(scope.row)"/>
+              <ms-table-operator-button v-permission="['PROJECT_TRACK_PLAN:READ+RELEVANCE_OR_CANCEL']"
+                                        :tip="$t('test_track.plan_view.cancel_relevance')"
+                                        icon="el-icon-unlock" type="danger" @exec="handleDelete(scope.row)"/>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -155,7 +164,7 @@ import {
   buildBatchParam,
   initCondition,
   toggleAllSelection,
-  checkTableRowIsSelect
+  checkTableRowIsSelect, deepClone
 } from "@/common/js/tableUtils";
 import HeaderCustom from "@/business/components/common/head/HeaderCustom";
 import {TAPD, TEST_CASE_LIST, TEST_PLAN_LOAD_CASE} from "@/common/js/constants";
@@ -193,13 +202,13 @@ export default {
       total: 0,
       selectDataCounts: 0,
       status: 'default',
-      screenHeight: 'calc(100vh - 330px)',//屏幕高度
+      screenHeight: 'calc(100vh - 250px)',//屏幕高度
       buttons: [
         {
-          name: this.$t('test_track.plan.load_case.unlink_in_bulk'), handleClick: this.handleDeleteBatch
+          name: this.$t('test_track.plan.load_case.unlink_in_bulk'), handleClick: this.handleDeleteBatch, permissions: ['PROJECT_TRACK_PLAN:READ+CASE_BATCH_DELETE']
         },
         {
-          name: this.$t('test_track.plan.load_case.batch_exec_cases'), handleClick: this.handleRunBatch
+          name: this.$t('test_track.plan.load_case.batch_exec_cases'), handleClick: this.handleRunBatch, permissions: ['PROJECT_TRACK_PLAN:READ+CASE_BATCH_RUN']
         }
       ],
       statusFilters: [
@@ -231,6 +240,7 @@ export default {
   },
   watch: {
     selectProjectId() {
+      this.condition.selectAll = false;
       this.initTable();
     },
     planId() {
@@ -292,7 +302,8 @@ export default {
     },
 
     customHeader() {
-      this.$refs.headerCustom.open(this.tableLabel)
+      const list = deepClone(this.tableLabel);
+      this.$refs.headerCustom.open(list);
     },
     initTable() {
       this.autoCheckStatus();
@@ -485,11 +496,7 @@ export default {
 </script>
 
 <style scoped>
-/deep/ .run-button {
-  background-color: #409EFF;
-  border-color: #409EFF;
-}
 /deep/ .el-table__fixed-body-wrapper {
-  top: 59px !important;
+  top: 47px !important;
 }
 </style>
